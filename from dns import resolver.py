@@ -22,7 +22,7 @@ def main():
     for domain in domains:
         domain = domain.strip()
         result = dns_query(domain, record_type, server)
-        print(f"Resultados de la consulta para {domain}: {result}")
+        print(f"Resultados de la consulta para ver {domain}: {result}")
 
 if __name__ == "__main__":
     main()
