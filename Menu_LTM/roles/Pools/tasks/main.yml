@@ -1,0 +1,25 @@
+---
+# tasks file for Pools
+     - name: Crear Pool
+       bigip_pool:
+         description: "{{ Ticket }} creado por {{ MI_C_Validador }} y validado por {{ MI_C_Validador }}"
+         lb_method: "{{Pools['Load_Balancing_Method'] }}"
+         monitors: "{{ Pools['Health_Monitors'] }}" 
+         name: "{{ Virtual_Servers['Name'] }}_{{ Pools.New_Members[0].Service_Port}}"
+         priority_group_activation: "{{ Pools['Priority_Group_Activation'] }}"
+         slow_ramp_time: 10
+         state: present
+         service_down_action: "{{ Pools['Action_On_Service_Down'] }}"
+         provider: "{{ provider }}"
+       delegate_to: localhost
+
+     - name: Agregar Pool Members al Pool
+       bigip_pool_member:
+         provider: "{{ provider }}"
+         host: "{{ item.Address }}"
+         name: "{{ item.Node_Name }}"
+         pool: "{{ Virtual_Servers['Name'] }}_{{ Pools.New_Members[0].Service_Port}}"
+         port: "{{ item.Service_Port }}"
+         priority_group: "{{ item.Priority }}"
+       loop: "{{ Pools['New_Members'] }}"
+       delegate_to: localhost

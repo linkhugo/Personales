@@ -1,0 +1,13 @@
+---
+# tasks file for Virtual_Servers
+    - name: Crear Granja STD con Certificado
+      include_tasks: Granja_STD_Certificado.yml
+      when: Virtual_Servers.Type == "standard" and Certificado.Ruta != "NA" and Certificado.Password != "NA" 
+
+    - name: Crear Granja STD sin Certificado
+      include_tasks: Granja_STD.yml
+      when: Virtual_Servers.Type == "standard" and Certificado.Ruta == "NA" and Certificado.Password == "NA"
+
+    - name: Crear Granja PerformanceL4
+      include_tasks: Granja_PerformanceL4.yml
+      when: Virtual_Servers.Type == "performance-l4"

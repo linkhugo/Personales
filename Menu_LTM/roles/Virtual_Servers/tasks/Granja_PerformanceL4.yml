@@ -1,0 +1,38 @@
+---  
+     - name: Crear SNAT
+       bigip_snat_pool:
+        name: "{{ Virtual_Servers['Name'] }}_SNAT"
+        provider: "{{ provider }}"
+        state: present
+        members: "{{ SNAT_Pool.Member_List }}"
+       register: SNAT_Pool_Crear_Granja
+       when: SNAT_Pool.Member_List[0] != 'NA'
+       changed_when: false
+       delegate_to: localhost
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: null
+       when: SNAT_Pool_Crear_Granja.skipped
+       ignore_errors: true
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: "{{ Virtual_Servers['Name'] }}_SNAT"
+       when:  SNAT_Pool_Crear_Granja.failed != "false" 
+       ignore_errors: true
+
+     - name: Create a VIP Performance-l4
+       bigip_virtual_server:
+         state: "{{ Virtual_Servers['State'] }}"
+         type: "{{ Virtual_Servers['Type'] | default('standard')  }}"
+         ip_protocol: "{{ Virtual_Servers['Protocol'] }}"
+         name: "{{ Virtual_Servers['Name'] }}_{{ Virtual_Servers['Service_Port']  }}"
+         destination: "{{ Virtual_Servers['Destination_Address'] }}"
+         source: "{{ Virtual_Servers['Source_Address'] }}"
+         port: "{{ Virtual_Servers['Service_Port'] }}"
+         pool: "{{ Virtual_Servers['Name'] }}_{{ Pools.New_Members[0].Service_Port}}"
+         snat: "{{ SNAT_Pool_Crear_Granja | default('automap',true) }}"
+         description: "{{ Ticket }} creado por {{ MI_C_Validador }} y validado por {{ MI_C_Validador }}"
+         profiles: "{{ profiles_fastL4 }}"
+         default_persistence_profile: "{{ Virtual_Servers['Default_Persistence_Profile'] }}"
+         provider: "{{ provider }}"
+       delegate_to: localhost

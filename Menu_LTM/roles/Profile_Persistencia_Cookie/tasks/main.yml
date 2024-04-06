@@ -1,0 +1,27 @@
+---
+# tasks file for Profile_Persistencia_Cookie
+
+    - name: Obtener configuración actual de los perfiles de persistencia Cookie
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - list ltm persistence cookie
+        provider: "{{ provider }}"
+      register: Profiles_Cookie
+      delegate_to: localhost
+
+    - name: Crear Profiles de Persistencias Cookie
+      f5networks.f5_modules.bigip_profile_persistence_cookie:
+        name: "cookie_{{ Virtual_Servers.Name }}"
+        cookie_name: "{{ Persistencia_Cookie.Cookie_Name }}"
+        state: present
+        encryption_passphrase: " {{ Persistencia_Cookie.Encryption_Passphrase }} "
+        expiration: 
+          days: " {{ Persistencia_Cookie.Expiration.Days }} "
+          hours: " {{ Persistencia_Cookie.Expiration.hours }} "
+          minutes: " {{ Persistencia_Cookie.Expiration.minutes }} "
+          seconds: " {{ Persistencia_Cookie.Expiration.seconds }} "
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: 
+          - "'cookie_' ~ Virtual_Servers.Name ~ '' not in Profiles_Cookie.stdout[0]"
+      notify: Save sys config

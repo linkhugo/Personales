@@ -1,0 +1,21 @@
+---
+# tasks file for SNAT_Pool_List
+
+     - name: Crear SNAT Pool
+       f5networks.f5_modules.bigip_snat_pool:
+        name: "{{ Virtual_Servers['Name'] }}_SNAT"
+        provider: "{{ provider }}"
+        state: present
+        members: "{{ SNAT_Pool.Member_List }}"
+       register: SNAT_Pool_Crear_Granja
+       delegate_to: localhost
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: null
+       when: SNAT_Pool_Crear_Granja.skipped
+       ignore_errors: true
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: "{{ Virtual_Servers['Name'] }}_SNAT"
+       when:  SNAT_Pool_Crear_Granja.failed != "false" 
+       ignore_errors: true

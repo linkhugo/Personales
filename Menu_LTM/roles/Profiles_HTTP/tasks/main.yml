@@ -1,0 +1,17 @@
+    - name: Buscar Profile HTTP
+      f5networks.f5_modules.bigip_device_info:
+        gather_subset:
+          - http-profiles
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      register: Profile_HTTP
+
+    - name: Create HTTP profile
+      f5networks.f5_modules.bigip_profile_http:
+        name: http_X-Forwarded-For_STD
+        insert_xforwarded_for: true
+        state: present
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: "'http_X-Forwarded-For_STD' not in Profile_HTTP.ansible_facts.ansible_net_http_profiles | map(attribute='name') | list"
+      notify: Save sys config

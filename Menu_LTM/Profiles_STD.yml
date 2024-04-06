@@ -1,0 +1,11 @@
+---
+- name: Crear Todos los Profile STD para F5
+  hosts: F5
+  gather_facts: false
+  roles:
+   - role: Profile_Persistencia_Source_Address
+     tags: source_address_std
+   - role: Ciphers_Profiles_SSL
+     tags: ciphers_profiles_ssl_std
+   - role: Profiles_HTTP
+     tags: profiles_http

@@ -1,0 +1,35 @@
+---
+    - name: Definir Variable
+      set_fact:
+        profile_source_address_virtual: null
+
+    - name: Obtener configuración actual de los perfiles de persistencia source address
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - list ltm persistence source-addr 
+        provider: "{{ provider }}"
+      register: Profiles_Source_Address
+      delegate_to: localhost
+
+    - name: Crear Profiles de Persistencias
+      f5networks.f5_modules.bigip_profile_persistence_src_addr:
+        name: "source_addr_{{ item }}s_STD"
+        state: present
+        entry_timeout: " {{ item }} "
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: 
+          - "'source_addr_' ~ item ~ 's_STD' not in Profiles_Source_Address.stdout[0]"
+          - item is not none
+      loop: "{{ Persistencia_Source_Addres.Timeout }}"
+      register: profile_creation_result
+      notify: Save sys config
+
+
+    - name: Asignar nombre de la Persistencia
+      set_fact:
+        profile_source_address_virtual: "{{ item.invocation.module_args.name }}"
+      loop: "{{ profile_creation_result.results }}"
+      when: item.invocation.module_args.name is defined and item.invocation.module_args.name != None
+      no_log: true
+

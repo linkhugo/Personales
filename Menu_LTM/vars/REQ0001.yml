@@ -1,0 +1,93 @@
+---
+# Informacion General Valores Obligatorios
+#Siempre usar una plantilla Vacia para no colocar datos duplicados.
+Ticket: REQ0001
+MI_C_Validador: Hugo
+MEGA_ID: 234
+F5Device: 192.168.3.46
+#-------------------------------------------------------------------------------
+#Valores Default para Granja Standard y Performance L4 |  Obligatorios.
+Virtual_Servers:                        #Esta linea no agregar datos
+  Name: hugo2.mx.corp                                 #Nombre de la Granja sin el puerto, Cuando se cree la granja tendra el siguiente valor:  Name_ServicePort Ej: Pruebas.pre.mx.corp_443
+  Type: standard                                #Normalmente solo se podra usar standard o perfornamce-l4
+  Source_Address: 0.0.0.0/0             
+  Destination_Address: 192.168.3.151
+  Service_Port : 443
+  State: disabled
+  Protocol: tcp
+  Default_Persistence_Profile: source_addr_360s_STD         #Si necesitas crear una persistencia por Cookie o Source_Address Sigue a la Siguiente parte y luego regresa a colocar el nombre de la persitencia.
+  Protocol_Profile_Client:               #Esta linea no agregar datos
+  - name: f5-tcp-wan
+    context: client-side                 #No modificar Valor
+  Protocol_Profile_Server:               #Esta linea no agregar datos
+  - name: f5-tcp-lan
+    context: server-side                 #No modificar Valor
+  HTTP_Profile: null                     #Si requieren profile HTTP usar el de Default HTTP o para Activar el X-Forward-For usar: http_X-Forwarded-For_STD
+#-----------------------------------------------------------------------------------
+#Solo rellenar en caso de que la Persistencia Source Address no la encuentres en el equipo , si rellenas los datos tomara el siguiente nombre:
+#source_addr_Timeouts_STD ejemplo:  source_addr_60s_STD
+Persistencia_Source_Addres: #Esta linea no agregar datos
+  Timeout:                  #Esta linea no agregar datos
+    - null                  #valor en Segundos
+#-------------------------------------------------------------------------------
+#Si rellenas esta parte debes colocar la informacion en Default_Persistence_Profile el nombre de la Cookie
+#El nombre de la Cookie sera:  cookie_"nombredelvirtualserver"
+#Si rellenas un dato debes rellenar todos en caso contrario dejar con NA los campos de Cookie_Name e Encryption_Passphrase
+#Si colocas los 4 Ceros la opcion sera Session Cookie.
+Persistencia_Cookie: #Esta linea no agregar datos
+  Cookie_Name: NA
+  Expiration: #Esta linea no agregar datos
+   Days: 0
+   hours: 0
+   minutes: 0
+   seconds: 0
+  Encryption_Passphrase: NA
+
+#--------------------------------------------------------------------------------
+#Colocar la IP que necesitas para el Pool SNAT en caso de Requerirse de lo contrario dejar el NA y se utilizara automap
+SNAT_Pool: #Esta linea no agregar datos
+   Member_List:
+    - 192.168.2.150
+#------------------------------------------------------------------------
+#Deben colocar tanto la Ruta donde colocaron el Certificado y el Password de lo contrario colocar NA en las dos variables
+Certificado: #Esta linea no agregar datos
+  Ruta: NA
+  Password: NA
+#------------------------------------------------------------------------
+profiles_standard:
+  - "{{ Virtual_Servers.Protocol_Profile_Client [0] }}"
+  - "{{ Virtual_Servers.Protocol_Profile_Server [0] }}"
+  #- "{{ Virtual_Servers.HTTP_Profile }}"
+
+profiles_fastL4:
+#- "{{ Virtual_Servers.Protocol_Profile_Client[0].name }}"
+
+
+#Informacion para Crear Monitor HTTPS en caso de Necesitar, Para que se cree el monitor tanto Send y Recieve deben tener valores diferentes a NA.
+Monitors_HTTPS: #Esta linea no agregar datos
+  Send_String: /post
+  Receive_String: 200
+
+#Informacion Para Crear Pool
+#https://docs.ansible.com/ansible/latest/collections/f5networks/f5_modules/bigip_pool_module.html#ansible-collections-f5networks-f5-modules-bigip-pool-module
+Pools: #Esta linea no agregar datos
+  # Para ver los tipos de metodo de balanceo ingresar al link que se proporciona arriba y buscar lb_method.
+  Load_Balancing_Method: round-robin
+  # Por Default se tiene 0, si colocan otro valor es como si colocaran Less than: X Available Members(s)
+  Priority_Group_Activation	: 0
+  #Este valor normalmente lo modificamos cuando la granja sea un FastL4, para ver los valores pueden entrar al link y buscar service_down_action
+  Action_On_Service_Down: none
+  #Colocar todos los Healt Monitors que necesiten en orden descente siempre agregandole un - al prinicipo, estos monitores deberias ir a validarlos en el equipo, solo si pediste crear el 
+  #Monitor HTTPS arriba favor de colocarlo de la siguiente forma: - "{{ Virtual_Servers['Name'] }}_https"
+  Health_Monitors:
+   -  tcp
+   - "{{ Virtual_Servers['Name'] }}_https"
+  New_Members	:
+    - Node_Name: nodo1.mx.corp
+      Address: 192.168.1.24
+      Service_Port: 1443
+      Priority: 0
+    - Node_Name: nodo2.mx.corp
+      Address: 192.168.1.25
+      Service_Port: 443
+      Priority: 0

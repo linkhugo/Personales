@@ -1,0 +1,12 @@
+---
+# tasks file for Monitor_HTTPS
+ 
+     - name: Crear Monitor HTTPS
+       f5networks.f5_modules.bigip_monitor_https:
+        description: "{{ Ticket }} creado por {{ MI_C_Validador }} y validado por {{ MI_C_Validador }}"
+        name: "{{ Virtual_Servers['Name'] }}_https"
+        provider: "{{ provider }}"
+        receive: "{{ Monitors_HTTPS.Receive_String }}"
+        send:  "GET {{ Monitors_HTTPS['Send_String'] }} HTTP/1.1\\r\\nHost: {{ Virtual_Servers['Name'] }}\\r\\nConnection: Close\\r\\n\\r\\n"
+        state: present
+       delegate_to: localhost

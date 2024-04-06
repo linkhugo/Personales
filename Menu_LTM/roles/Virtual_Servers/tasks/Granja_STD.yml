@@ -1,0 +1,17 @@
+---  
+     - name: Create a VIP STD sin Certificado
+       bigip_virtual_server:
+         state: "{{ Virtual_Servers['State'] }}"
+         type: "{{ Virtual_Servers['Type'] }}"
+         ip_protocol: "{{ Virtual_Servers['Protocol'] }}"
+         name: "{{ Virtual_Servers['Name'] }}_{{ Virtual_Servers['Service_Port']  }}"
+         destination: "{{ Virtual_Servers['Destination_Address'] }}"
+         source: "{{ Virtual_Servers['Source_Address'] }}"
+         port: "{{ Virtual_Servers['Service_Port'] }}"
+         pool: "{{ Virtual_Servers['Name'] }}_{{ Pools.New_Members[0].Service_Port}}"
+         snat: "{{ SNAT_Pool_Crear_Granja | default('automap',true) }}"
+         description: "{{ Ticket }} creado por {{ MI_C_Validador }} y validado por {{ MI_C_Validador }}"
+         profiles: "{{ profiles_standard }}"
+         default_persistence_profile: "{{ profile_source_address_virtual  | default ( Virtual_Servers.Default_Persistence_Profile , true ) }}"
+         provider: "{{ provider }}"
+       delegate_to: localhost

@@ -1,0 +1,90 @@
+---  
+     - name: Validar si el certificado Existe
+       stat:
+         path: "{{ Certificado.Ruta }}"
+       register: st
+
+     - name: Instalar Certificado
+       shell: tmsh install sys crypto pkcs12 {{ Virtual_Servers['Name'] }} from-local-file {{ Certificado.Ruta }} passphrase {{ Certificado.Password }}
+       when: st.stat.exists is defined and st.stat.exists
+       no_log: True
+       register: Instalado_Certificado_Crear_Granja
+       changed_when: false
+
+
+     - name: Crear Profile SSL Cliente 
+       f5networks.f5_modules.bigip_profile_client_ssl:
+        state: present
+        name: "{{ Virtual_Servers['Name'] }}_client_ssl_{{ '%Y' | strftime }}"
+        cert_key_chain:
+          - cert: "{{ Virtual_Servers['Name'] }}"
+            key: "{{ Virtual_Servers['Name'] }}"
+            chain: "{{ Virtual_Servers['Name'] }}"
+            true_names: yes
+        provider: "{{ provider }}"
+        parent: clientssl
+       delegate_to: localhost
+       when: st.stat.exists is defined and st.stat.exists and Instalado_Certificado_Crear_Granja.failed != "false"
+
+     - name: Crear Profile SSL Servidor
+       f5networks.f5_modules.bigip_profile_server_ssl:
+        name: "{{ Virtual_Servers['Name'] }}_server_ssl_{{ '%Y' | strftime }}"
+        provider: "{{ provider }}"
+        certificate: "{{ Virtual_Servers['Name'] }}"
+        key: "{{ Virtual_Servers['Name'] }}"
+        chain: "{{ Virtual_Servers['Name'] }}"
+        parent: serverssl
+       when: st.stat.exists is defined and st.stat.exists and Instalado_Certificado_Crear_Granja.failed != "false"
+       delegate_to: localhost
+
+
+     - set_fact:
+        profiles_ssl: 
+          - name: "{{ Virtual_Servers['Name'] }}_server_ssl_{{ '%Y' | strftime }}"
+            context: server-side
+          - name: "{{ Virtual_Servers['Name'] }}_client_ssl_{{ '%Y' | strftime }}"
+            context: client-side
+
+     - name: Asignar Valores de Profiles SSL + Profiles Standard
+       set_fact:
+        profiles_full: "{{ profiles_ssl + profiles_standard }}"
+
+
+     - name: Crear SNAT
+       bigip_snat_pool:
+        name: "{{ Virtual_Servers['Name'] }}_SNAT"
+        provider: "{{ provider }}"
+        state: present
+        members: "{{ SNAT_Pool.Member_List }}"
+       register: SNAT_Pool_Crear_Granja
+       when: SNAT_Pool.Member_List[0] != 'NA'
+       changed_when: false
+       delegate_to: localhost
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: null
+       when: SNAT_Pool_Crear_Granja.skipped
+       ignore_errors: true
+
+     - set_fact:
+         SNAT_Pool_Crear_Granja: "{{ Virtual_Servers['Name'] }}_SNAT"
+       when:  SNAT_Pool_Crear_Granja.failed != "false" 
+       ignore_errors: true
+
+     - name: Create a VIP Con Certificado
+       bigip_virtual_server:
+         state: "{{ Virtual_Servers['State'] }}"
+         type: "{{ Virtual_Servers['Type'] | default('standard')  }}"
+         ip_protocol: "{{ Virtual_Servers['Protocol'] }}"
+         name: "{{ Virtual_Servers['Name'] }}_{{ Virtual_Servers['Service_Port']  }}"
+         destination: "{{ Virtual_Servers['Destination_Address'] }}"
+         source: "{{ Virtual_Servers['Source_Address'] }}"
+         port: "{{ Virtual_Servers['Service_Port'] }}"
+         pool: "{{ Virtual_Servers['Name'] }}_{{ Pools.New_Members[0].Service_Port}}"
+         snat: "{{ SNAT_Pool_Crear_Granja | default('automap',true) }}"
+         description: "{{ Ticket }} creado por {{ MI_C_Validador }} y validado por {{ MI_C_Validador }}, El MEGA ID es: {{ MEGA_ID }}"
+         profiles: "{{ profiles_full }}"
+         default_persistence_profile: "{{ Virtual_Servers['Default_Persistence_Profile'] }}"
+         provider: "{{ provider }}"
+       when: st.stat.exists is defined and st.stat.exists and Instalado_Certificado_Crear_Granja.failed != "false"
+       delegate_to: localhost

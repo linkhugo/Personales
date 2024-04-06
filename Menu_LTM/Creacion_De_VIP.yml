@@ -1,0 +1,30 @@
+---
+- name: Crear VIP, Pool y Pool Members
+  hosts: "{{ F5Device }}"
+  gather_facts: false
+  vars_files:
+    - vars/{{ ticket_REQ }}.yml
+  roles:
+   - role: SNAT_Pool_List
+     tags: snat_pool_list
+     when: SNAT_Pool.Member_List[0] != 'NA'
+
+   - role: Monitor_HTTPS
+     tags: monitor_https
+     when: Monitors_HTTPS.Send_String != "NA" and Monitors_HTTPS.Receive_String != "NA"
+
+   - role: Pools
+     tags: pools
+      
+   - role: Profile_Persistencia_Source_Address
+     tags: source_address_std
+     when: Persistencia_Source_Addres.Timeout[0] is not none
+
+   - role: Profile_Persistencia_Cookie
+     tags: persistencia_cookie
+     when: Persistencia_Cookie.Cookie_Name  != "NA" or Persistencia_Cookie.Encryption_Passphrase  != "NA"
+
+   - role: Virtual_Servers
+     tags: virtual_servers
+        
+

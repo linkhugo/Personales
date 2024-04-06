@@ -1,0 +1,8 @@
+---
+# handlers file for Profile_Persistencia_Cookie
+
+  - name: Save sys config
+    f5networks.f5_modules.bigip_config:
+      save: true
+      provider: "{{ provider }}"
+    delegate_to: localhost

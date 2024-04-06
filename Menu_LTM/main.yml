@@ -1,0 +1,133 @@
+---
+- name: Crear Todos los Profile STD para F5
+  hosts: F5
+  gather_facts: false
+  tasks:
+
+    - name: Obtener configuración actual de los perfiles de persistencia
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - list ltm persistence source-addr 
+        provider: "{{ provider }}"
+      register: Profiles_Source_Address
+      delegate_to: localhost
+
+
+    - name: Crear Profiles de Persistencias
+      f5networks.f5_modules.bigip_profile_persistence_src_addr:
+        name: "source_addr_{{ item }}s_STD"
+        state: present
+        entry_timeout: " {{ item }} "
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: "'source_addr_' ~ item ~ 's_STD' not in Profiles_Source_Address.stdout[0]"
+      loop:
+        - 60
+        - 120
+        - 180
+        - 300
+        - 600
+        - 1200
+        - 240
+      notify: Save sys config
+
+    - name: Obtener configuración actual de los Cipher Rules
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - list ltm cipher rule 
+        provider: "{{ provider }}"
+      register: Cipher_Rules
+      delegate_to: localhost
+
+    - name: Crear Cipher Rule STD
+      shell: tmsh create ltm cipher rule ciphers_rules_STD cipher ECDHE:RSA:ECDHE_ECDSA:!SSLV3:!RC4:!EXP:!DES:!3DES:TLSV1_3
+      when: "'ciphers_rules_STD' not in Cipher_Rules.stdout[0]"
+      notify: Save sys config
+
+    - name: Obtener configuración actual de los Cipher Group
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - list ltm cipher group 
+        provider: "{{ provider }}"
+      register: Cipher_Group
+      delegate_to: localhost
+
+    
+    - name: Crear Cipher Group STD
+      shell: tmsh create ltm cipher group ciphers_group_STD allow add { ciphers_rules_STD }
+      when: "'ciphers_rules_STD' not in Cipher_Rules.stdout[0] and 'ciphers_group_STD' not in Cipher_Group.stdout[0]"
+      notify: Save sys config
+
+    - name: Buscar Profile Client SSL
+      f5networks.f5_modules.bigip_device_info:
+        gather_subset:
+          - client-ssl-profiles
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      register: Profile_Client_SSL
+
+    - name: Crear Profile Client SSL
+      f5networks.f5_modules.bigip_profile_client_ssl:
+        name: "client_ssl_STD"
+        state: present
+        ciphers: none
+        cipher_group: ciphers_group_STD
+        options:
+          - no-tlsv1.1
+          - no-sslv3
+          - no-tlsv1
+          - no-ssl
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: "'ciphers_rules_STD' in Cipher_Rules.stdout[0] and 'ciphers_group_STD' in Cipher_Group.stdout[0] and 'client_ssl_STD' not in Profile_Client_SSL.ansible_facts.ansible_net_client_ssl_profiles | map(attribute='name') | list"
+      notify: Save sys config
+
+    - name: Buscar Profile Server SSL
+      f5networks.f5_modules.bigip_device_info:
+        gather_subset:
+          - server-ssl-profiles
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      register: Profile_Server_SSL
+
+
+    - name: Crear Profile Server SSL
+      f5networks.f5_modules.bigip_profile_server_ssl:
+        name: "server_ssl_STD"
+        state: present
+        ciphers: none
+        cipher_group: ciphers_group_STD
+        options:
+          - no-tlsv1.1
+          - no-sslv3
+          - no-tlsv1
+          - no-ssl
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: "'ciphers_rules_STD' in Cipher_Rules.stdout[0] and 'ciphers_group_STD'  in Cipher_Group.stdout[0] and 'server_ssl_STD' not in Profile_Server_SSL.ansible_facts.ansible_net_server_ssl_profiles | map(attribute='name') | list"
+      notify: Save sys config
+
+    - name: Buscar Profile HTTP
+      f5networks.f5_modules.bigip_device_info:
+        gather_subset:
+          - http-profiles
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      register: Profile_HTTP
+
+    - name: Create HTTP profile
+      f5networks.f5_modules.bigip_profile_http:
+        name: http_X-Forwarded-For_STD
+        insert_xforwarded_for: true
+        state: present
+        provider: "{{ provider }}"
+      delegate_to: localhost
+      when: "'http_X-Forwarded-For_STD' not in Profile_HTTP.ansible_facts.ansible_net_http_profiles | map(attribute='name') | list"
+      notify: Save sys config
+
+  handlers:
+    - name: Save sys config
+      f5networks.f5_modules.bigip_config:
+        save: true
+        provider: "{{ provider }}"
+      delegate_to: localhost
